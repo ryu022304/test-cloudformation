@@ -1,0 +1,129 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Description: Deploy Apache server
+
+Mappings:
+  InstanceConfig:
+    EC2:
+      InstanceImageId: ami-0f037327d64de9e49
+      InstanceType: t3.nano
+
+Parameters:
+  MyIp:
+    Type: String
+    Default: 0.0.0.0/32
+    Description: own IP adrress
+  MyKey:
+    Type: AWS::EC2::KeyPair::KeyName
+    Default: test-key
+    Description: public key for ssh access to EC2 instance
+
+Resources:
+  # VPC
+  TestVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      Tags:
+        - Key: Name
+          Value: test-vpc
+  # Internet Gateway
+  TestInternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: test-igw
+  # Internet GatewayとVPCの紐付け
+  TestVPCGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref TestVPC
+      InternetGatewayId: !Ref TestInternetGateway
+  # ルートテーブルの作成
+  TestRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref TestVPC
+      Tags:
+        - Key: Name
+          Value: test-route-table
+  # ルーティングの設定
+  TestRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref TestRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref TestInternetGateway
+  # Subnet
+  TestSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      CidrBlock: 10.0.0.1/24
+      VpcId: !Ref TestVPC
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: test-subnet
+  # サブネットとルートテーブルの紐付け
+  TestSubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref TestSubnet
+      RouteTableId: !Ref TestRouteTable
+  # Security Groups
+  TestHTTPSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      VpcId: !Ref TestVPC
+      GroupName: http-sg
+      GroupDescription: allo http
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: !Ref MyIp
+  TestSSHSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      VpcId: !Ref TestVPC
+      GroupName: ssh-sg
+      GroupDescription: allo ssh
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: !Ref MyIp
+  # EC2 instance
+  TestInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      SubnetId: !Ref TestSubnet
+      ImageId:
+        Fn::FindInMap:
+          - InstanceConfig
+          - EC2
+          - InstanceImageId
+      InstanceType:
+        Fn::FindInMap:
+          - InstanceConfig
+          - EC2
+          - InstanceType
+      KeyName: !Ref MyKey
+      SecurityGroupIds:
+        - !Ref TestHTTPSecurityGroup
+        - !Ref TestSSHSecurityGroup
+      UserData:
+        Fn::Base64: |
+          #!/bin/bash
+          sudo yum update
+          sudo yum install -y httpd
+          sudo systemctl start httpd
+          sudo systemctl enable httpd
+      Tags:
+        - Key: Name
+          Value: test-instance
+
+Outputs:
+  InstancePublicIp:
+    Value: !GetAtt TestInstance.PublicIp
