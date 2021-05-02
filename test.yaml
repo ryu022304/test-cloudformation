@@ -59,7 +59,7 @@ Resources:
   TestSubnet:
     Type: AWS::EC2::Subnet
     Properties:
-      CidrBlock: 10.0.0.1/24
+      CidrBlock: 10.0.1.0/24
       VpcId: !Ref TestVPC
       MapPublicIpOnLaunch: true
       Tags:
