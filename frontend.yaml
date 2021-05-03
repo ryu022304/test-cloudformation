@@ -1,0 +1,54 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Description: Deploy Apache server
+
+Mappings:
+  InstanceConfig:
+    EC2:
+      InstanceImageId: ami-0f037327d64de9e49
+      InstanceType: t3.nano
+
+Parameters:
+  MyKey:
+    Type: AWS::EC2::KeyPair::KeyName
+    Default: test-key
+    Description: public key for ssh access to EC2 instance
+  NetworkStackName:
+    Type: String
+    Default: network
+
+Resources:
+  # EC2 instance
+  TestInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      SubnetId:
+        Fn::ImportValue: !Sub ${NetworkStackName}-TestSubnetId
+      ImageId:
+        Fn::FindInMap:
+          - InstanceConfig
+          - EC2
+          - InstanceImageId
+      InstanceType:
+        Fn::FindInMap:
+          - InstanceConfig
+          - EC2
+          - InstanceType
+      KeyName: !Ref MyKey
+      SecurityGroupIds:
+        - Fn::ImportValue: !Sub ${NetworkStackName}-TestHTTPSecurityGroupId
+        - Fn::ImportValue: !Sub ${NetworkStackName}-TestSSHSecurityGroupId
+      UserData:
+        Fn::Base64: |
+          #!/bin/bash
+          sudo yum update
+          sudo yum install -y httpd
+          sudo systemctl start httpd
+          sudo systemctl enable httpd
+      Tags:
+        - Key: Name
+          Value: test-instance
+
+Outputs:
+  InstancePublicIp:
+    Value: !GetAtt TestInstance.PublicIp

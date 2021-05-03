@@ -1,22 +1,12 @@
 AWSTemplateFormatVersion: "2010-09-09"
 
-Description: Deploy Apache server
-
-Mappings:
-  InstanceConfig:
-    EC2:
-      InstanceImageId: ami-0f037327d64de9e49
-      InstanceType: t3.nano
+Description: Deploy VPC Network
 
 Parameters:
   MyIp:
     Type: String
     Default: 0.0.0.0
     Description: own IP adrress
-  MyKey:
-    Type: AWS::EC2::KeyPair::KeyName
-    Default: test-key
-    Description: public key for ssh access to EC2 instance
 
 Resources:
   # VPC
@@ -94,36 +84,17 @@ Resources:
           FromPort: 22
           ToPort: 22
           CidrIp: !Join ["/", [!Ref MyIp, "32"]]
-  # EC2 instance
-  TestInstance:
-    Type: AWS::EC2::Instance
-    Properties:
-      SubnetId: !Ref TestSubnet
-      ImageId:
-        Fn::FindInMap:
-          - InstanceConfig
-          - EC2
-          - InstanceImageId
-      InstanceType:
-        Fn::FindInMap:
-          - InstanceConfig
-          - EC2
-          - InstanceType
-      KeyName: !Ref MyKey
-      SecurityGroupIds:
-        - !Ref TestHTTPSecurityGroup
-        - !Ref TestSSHSecurityGroup
-      UserData:
-        Fn::Base64: |
-          #!/bin/bash
-          sudo yum update
-          sudo yum install -y httpd
-          sudo systemctl start httpd
-          sudo systemctl enable httpd
-      Tags:
-        - Key: Name
-          Value: test-instance
 
 Outputs:
-  InstancePublicIp:
-    Value: !GetAtt TestInstance.PublicIp
+  TestHTTPSecurityGroupId:
+    Value: !Ref TestHTTPSecurityGroup
+    Export:
+      Name: !Sub ${AWS::StackName}-TestHTTPSecurityGroupId
+  TestSSHSecurityGroupId:
+      Value: !Ref TestSSHSecurityGroup
+      Export:
+        Name: !Sub ${AWS::StackName}-TestSSHSecurityGroupId
+  TestSubnetId:
+    Value: !Ref TestSubnet
+    Export:
+      Name: !Sub ${AWS::StackName}-TestSubnetId
