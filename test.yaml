@@ -11,7 +11,7 @@ Mappings:
 Parameters:
   MyIp:
     Type: String
-    Default: 0.0.0.0/32
+    Default: 0.0.0.0
     Description: own IP adrress
   MyKey:
     Type: AWS::EC2::KeyPair::KeyName
@@ -82,7 +82,7 @@ Resources:
         - IpProtocol: tcp
           FromPort: 80
           ToPort: 80
-          CidrIp: !Ref MyIp
+          CidrIp: !Join ["/", [!Ref MyIp, "32"]]
   TestSSHSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
@@ -93,7 +93,7 @@ Resources:
         - IpProtocol: tcp
           FromPort: 22
           ToPort: 22
-          CidrIp: !Ref MyIp
+          CidrIp: !Join ["/", [!Ref MyIp, "32"]]
   # EC2 instance
   TestInstance:
     Type: AWS::EC2::Instance
